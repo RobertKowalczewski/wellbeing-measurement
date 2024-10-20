@@ -1,5 +1,11 @@
 **wellbeing-measurement**
 
+3rd meeting (20.10, online)
+- will meet tomorrow and try to connect smartwatch with a phone
+- we probably will have to use wear os app on mobile to get the data from smartwatches
+- we will use flet as our app framework
+- started work on Affect Matrix
+
 2nd meeting (18.10, with sponsors, at faculty of architecture): 
 - got smartwatches - Galaxy Watch FE
 - waiting for scenario (Tuesday)
