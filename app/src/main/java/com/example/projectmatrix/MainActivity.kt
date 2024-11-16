@@ -3,6 +3,8 @@ package com.example.projectmatrix
 import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.Context
+import android.graphics.Color.BLACK
+import android.graphics.Color.RED
 import android.os.Bundle
 import android.view.MotionEvent
 import android.view.View
@@ -10,7 +12,10 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.activity.ComponentActivity
 import android.util.Log
-import android.view.WindowManager
+import com.example.projectmatrix.connection.websocket.WebsocketConnectionService
+import java.net.Inet4Address
+import java.net.NetworkInterface
+import java.net.SocketException
 
 
 class MainActivity : ComponentActivity() {
@@ -30,6 +35,9 @@ class MainActivity : ComponentActivity() {
         val editTextSurname: EditText = findViewById(R.id.editTextSurname)
         val editTextPhone: EditText = findViewById(R.id.editTextPhone)
         val imageView: ImageView = findViewById(R.id.imageView)
+        val ipAddress: TextView = findViewById(R.id.ipAddress)
+
+        startWatchConnection(ipAddress)
 
         val corData = listOf(
             "52.40633, 16.95103",
@@ -97,16 +105,12 @@ class MainActivity : ComponentActivity() {
 
                             clickCoordinates.add(Pair(normX, normY))
 
-                            if (clickCoordinates.size % 1 == 0) {
-                                // popup
-
-                                val coordinate = coordinates[i]
-                                showConfirmationPopup(this, "$coordinate", R.drawable.rofl) {
-                                    val matrix = findViewById<GridLayout>(R.id.matrix)
-                                    setupMatrixClicks(matrix)
-                                }
-                                i++
+                            val coordinate = coordinates[i]
+                            showConfirmationPopup(this, "$coordinate", R.drawable.rofl) {
+                                val matrix = findViewById<GridLayout>(R.id.matrix)
+                                setupMatrixClicks(matrix)
                             }
+                            i++
 
                             Toast.makeText(this, "$normX, $normY", Toast.LENGTH_SHORT).show()
                             true
@@ -144,6 +148,52 @@ class MainActivity : ComponentActivity() {
 
     private fun validatePhone(phone: String): Boolean {
         return phone.matches(Regex("^\\+?\\d{10,}$"))
+    }
+
+    private fun startWatchConnection(ipAddress: TextView) {
+        val address = getLocalIpAddress()
+        address?.let {
+            try {
+                val websocketService = WebsocketConnectionService(address, 5000, this)
+                websocketService.start()
+                onSuccessfulConnectionStart(ipAddress, address)
+            } catch (ex: Exception) {
+                onFailedConnectionStart(ipAddress, "Failed to start websocket server")
+            }
+        } ?: run {
+            onFailedConnectionStart(ipAddress,"Failed to find IP address")
+        }
+    }
+
+    private fun onSuccessfulConnectionStart(ipAddress: TextView, message: String) {
+        ipAddress.setTextColor(BLACK)
+        ipAddress.text = message
+        Log.d("ActivityMain", "reached")
+    }
+
+    private fun onFailedConnectionStart(ipAddress: TextView, message: String) {
+        ipAddress.setTextColor(RED)
+        ipAddress.text = message
+    }
+
+    private fun getLocalIpAddress(): String? {
+        try {
+            val en = NetworkInterface.getNetworkInterfaces()
+            while (en.hasMoreElements()) {
+                val networkInterface = en.nextElement()
+                val enumIpAddresses = networkInterface.inetAddresses
+                while (enumIpAddresses.hasMoreElements()) {
+                    val inetAddress = enumIpAddresses.nextElement()
+                    if (!inetAddress.isLoopbackAddress && inetAddress is Inet4Address) {
+                        Log.d("ActivityMain", "IPv4 Address: ${inetAddress.hostAddress}")
+                        return inetAddress.hostAddress
+                    }
+                }
+            }
+        } catch (ex: SocketException) {
+            ex.printStackTrace()
+        }
+        return null
     }
 
     fun showConfirmationPopup(context: Context, landmark: String, imageRes: Int, onConfirm: () -> Unit) {

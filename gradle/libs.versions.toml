@@ -1,5 +1,5 @@
 [versions]
-agp = "8.7.1"
+agp = "8.6.0"
 kotlin = "2.0.0"
 coreKtx = "1.13.1"
 junit = "4.13.2"
@@ -28,6 +28,10 @@ androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+okhttp3 = "com.squareup.okhttp3:okhttp:4.12.0"
+fasterxml = "com.fasterxml.jackson.core:jackson-databind:2.18.1"
+lombok = "org.projectlombok:lombok:1.18.34"
+java-websocket = "org.java-websocket:Java-WebSocket:1.5.7"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
