@@ -55,6 +55,7 @@ dependencies {
     implementation(libs.fasterxml)
     implementation(libs.lombok)
     implementation(libs.java.websocket)
+    implementation(libs.play.services.location)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

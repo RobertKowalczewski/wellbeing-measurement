@@ -1,11 +1,14 @@
 package com.example.projectmatrix
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.Context
 import android.graphics.Color.BLACK
 import android.graphics.Color.RED
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.InputMethodManager
@@ -16,16 +19,43 @@ import com.example.projectmatrix.connection.websocket.WebsocketConnectionService
 import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.net.SocketException
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
+import java.io.BufferedReader
+import kotlin.properties.Delegates
 
+data class Location(
+    var latitude: Double,
+    var longitude: Double,
+    var imageName: String
+)
 
 class MainActivity : ComponentActivity() {
+
+    //private var currentLatitude: Double = 0.0
+    //private var currentLongitude: Double = 0.0
+
+    private lateinit var currentLocation:android.location.Location
 
     // array to save coordinates
     private val clickCoordinates = mutableListOf<Pair<Float, Float>>()
 
+    // declare a global variable of FusedLocationProviderClient
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        currentLocation = android.location.Location("fused")
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        checkLocationPermission()
+        //run this every 2 seconds
+        updateLastKnownLocation()
+        // use functions of android.location.Location to measure distance between locations
+
         setContentView(R.layout.activity_main)
         var i = 1
         val myButton: Button = findViewById(R.id.myButton)
@@ -39,28 +69,11 @@ class MainActivity : ComponentActivity() {
 
         startWatchConnection(ipAddress)
 
-        val corData = listOf(
-            "52.40633, 16.95103",
-            "52.40588, 16.95057",
-            "52.40567, 16.95037",
-            "52.40517, 16.95155",
-            "52.40467, 16.95108",
-            "52.40423, 16.95064",
-            "52.40376, 16.95062",
-            "52.40326, 16.95002",
-            "52.40302, 16.94988",
-            "52.40227, 16.94951",
-            "52.40180, 16.94904",
-            "52.40158, 16.94975",
-            "52.40121, 16.95072"
-        )
-
-        val coordinates = corData.map { line ->
-            val (x, y) = line.split(", ").map { it.toDouble() }
-            Pair(x, y)
-        }
+        val stopCoordinates = readScenario("scenario1.scenario")
 
         myButton.setOnClickListener {
+            //print current location
+            println("${currentLocation.latitude} ${currentLocation.longitude}")
             myButton.visibility = View.GONE
             editTextName.visibility = View.VISIBLE
             editTextSurname.visibility = View.VISIBLE
@@ -84,7 +97,11 @@ class MainActivity : ComponentActivity() {
                 imageView.visibility = View.VISIBLE
                 imageView.setImageResource(R.drawable.test)
                 //first cordinate
-                showConfirmationPopup(this, "${coordinates[0]}", R.drawable.rofl) {
+                showConfirmationPopup(
+                    this,
+                    "${stopCoordinates[0].latitude} ${stopCoordinates[0].longitude}",
+                    R.drawable.rofl
+                ) {
                     val matrix = findViewById<GridLayout>(R.id.matrix)
                     setupMatrixClicks(matrix)
                 }
@@ -105,7 +122,7 @@ class MainActivity : ComponentActivity() {
 
                             clickCoordinates.add(Pair(normX, normY))
 
-                            val coordinate = coordinates[i]
+                            val coordinate = stopCoordinates[i]
                             showConfirmationPopup(this, "$coordinate", R.drawable.rofl) {
                                 val matrix = findViewById<GridLayout>(R.id.matrix)
                                 setupMatrixClicks(matrix)
@@ -115,15 +132,13 @@ class MainActivity : ComponentActivity() {
                             Toast.makeText(this, "$normX, $normY", Toast.LENGTH_SHORT).show()
                             true
                         }
+
                         else -> false
                     }
                 }
 
                 val landmark = "tree" // near building
                 val imageRes = R.drawable.tree
-
-
-
 
 
             } else {
@@ -197,6 +212,7 @@ class MainActivity : ComponentActivity() {
     }
 
     fun showConfirmationPopup(context: Context, landmark: String, imageRes: Int, onConfirm: () -> Unit) {
+
         AlertDialog.Builder(context)
             .setTitle("Are you close to $landmark?")
             .setIcon(imageRes)
@@ -223,6 +239,88 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    private fun readScenario(fileName: String): List<Location> {
+        val fileContent = assets.open(fileName).bufferedReader().use(BufferedReader::readText)
+
+        val locations = fileContent.lines().mapNotNull { line ->
+            val parts = line.split(", ")
+            if (parts.size == 3) {
+                val latitude = parts[0].toDoubleOrNull()
+                val longitude = parts[1].toDoubleOrNull()
+                val imageName = parts[2]
+                if (latitude != null && longitude != null) {
+                    Location(latitude, longitude, imageName)
+                } else {
+                    null
+                }
+            } else {
+                null
+            }
+        }
+        return locations
+    }
+
+    private fun checkLocationPermission() {
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                1
+            )
+        } else {
+            updateLastKnownLocation()
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 1) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                updateLastKnownLocation()
+            }
+        }
+    }
+
+    private fun updateLastKnownLocation() {
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            fusedLocationClient.lastLocation
+                .addOnSuccessListener { location: android.location.Location? ->
+                    if (location != null) {
+                        //currentLatitude = location.latitude
+                        //currentLongitude = location.longitude
+                        currentLocation = location
+                        println("set current location $currentLocation")
+
+                        // Example how to calculate the distance
+                        //val results = FloatArray(1)
+                        //val savedLatitude = 52.3984
+                        //val savedLongitude = 16.9486
+                        //android.location.Location.distanceBetween(savedLatitude, savedLongitude, currentLatitude, currentLongitude, results)
+                        //val distanceInMeters = results[0]
+
+                    } else {
+                        throw IllegalArgumentException("Location is null")
+                    }
+                }
+                .addOnFailureListener { e ->
+                    throw IllegalArgumentException("Failed to get location: ${e.message}")
+                }
+        }
+    }
+
 
 }
 
