@@ -14,6 +14,8 @@ import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.activity.ComponentActivity
+import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.constraintlayout.widget.ConstraintSet.Motion
 import com.example.projectmatrix.connection.websocket.WebsocketConnectionService
 import java.net.Inet4Address
 import java.net.NetworkInterface
@@ -23,7 +25,7 @@ import androidx.core.content.ContextCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import java.io.BufferedReader
-import kotlin.properties.Delegates
+
 
 data class Location(
     var latitude: Double,
@@ -31,20 +33,25 @@ data class Location(
     var imageName: String
 )
 
+
 class MainActivity : ComponentActivity() {
 
     //private var currentLatitude: Double = 0.0
     //private var currentLongitude: Double = 0.0
 
-    private lateinit var currentLocation:android.location.Location
+    private lateinit var currentLocation: android.location.Location
 
     // array to save coordinates
     private val clickCoordinates = mutableListOf<Pair<Float, Float>>()
+    // variable to store last click
+    private var lastClickPosition: Pair<Float, Float> = Pair<Float, Float>(0.0f,0.0f)
+    // current point
+    private var currentPoint: Int = 0
 
     // declare a global variable of FusedLocationProviderClient
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
-    @SuppressLint("ClickableViewAccessibility")
+    @SuppressLint("ClickableViewAccessibility", "WrongViewCast")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -56,7 +63,6 @@ class MainActivity : ComponentActivity() {
         // use functions of android.location.Location to measure distance between locations
 
         setContentView(R.layout.activity_main)
-        var i = 1
         val myButton: Button = findViewById(R.id.myButton)
         val submitButton: Button = findViewById(R.id.submitButton)
         val myTextView: TextView = findViewById(R.id.myTextView)
@@ -64,11 +70,28 @@ class MainActivity : ComponentActivity() {
         val editTextSurname: EditText = findViewById(R.id.editTextSurname)
         val editTextPhone: EditText = findViewById(R.id.editTextPhone)
         val imageView: ImageView = findViewById(R.id.imageView)
+        val circleView: ImageView = findViewById(R.id.circleView)
+        val matrixConfimButton: Button = findViewById(R.id.matrixConfirmButton)
+        val matrixText: ConstraintLayout = findViewById(R.id.matrixText)
+        imageView.setImageResource(R.drawable.test)
+        circleView.setImageResource(R.drawable.circle)
         val ipAddress: TextView = findViewById(R.id.ipAddress)
 
         startWatchConnection(ipAddress)
 
         val stopCoordinates = readScenario("scenario1.scenario")
+
+        matrixConfimButton.setOnClickListener {
+            circleView.visibility = View.GONE
+            clickCoordinates.add(lastClickPosition)
+            //Toast.makeText(this, "${lastClickPosition.first}, ${lastClickPosition.second}", Toast.LENGTH_SHORT).show()
+            val coordinate = stopCoordinates[currentPoint]
+            showConfirmationPopup(this, "$coordinate", R.drawable.rofl) {
+                val matrix = findViewById<GridLayout>(R.id.matrix)
+                setupMatrixClicks(matrix)
+            }
+            currentPoint++
+        }
 
         myButton.setOnClickListener {
             //print current location
@@ -95,7 +118,11 @@ class MainActivity : ComponentActivity() {
                 submitButton.visibility = View.GONE
 
                 imageView.visibility = View.VISIBLE
-                imageView.setImageResource(R.drawable.test)
+                matrixText.visibility = View.VISIBLE
+                //idk why but it makes it work
+                circleView.visibility = View.INVISIBLE
+
+
                 //first cordinate
                 showConfirmationPopup(
                     this,
@@ -109,27 +136,27 @@ class MainActivity : ComponentActivity() {
                 imageView.setOnTouchListener { _, event ->
                     when (event.action) {
                         MotionEvent.ACTION_DOWN -> {
+                            matrixConfimButton.visibility = View.VISIBLE
+                            circleView.x = imageView.x + event.x - circleView.width / 2
+                            circleView.y = imageView.y + event.y - circleView.height / 2
+                            circleView.visibility = View.VISIBLE
+                            //circleView.invalidate()
+
+
                             val drawable = imageView.drawable
                             val imageWidth = drawable.intrinsicWidth
                             val imageHeight = drawable.intrinsicHeight
 
                             val normX = event.x / imageWidth
                             val normY = event.y / imageHeight
+                            lastClickPosition = Pair(normX,normY)
+                            true
+                        }
+                        MotionEvent.ACTION_MOVE -> {
+                            circleView.x = imageView.x + event.x - circleView.width / 2
+                            circleView.y = imageView.y + event.y - circleView.height / 2
 
-
-
-
-
-                            clickCoordinates.add(Pair(normX, normY))
-
-                            val coordinate = stopCoordinates[i]
-                            showConfirmationPopup(this, "$coordinate", R.drawable.rofl) {
-                                val matrix = findViewById<GridLayout>(R.id.matrix)
-                                setupMatrixClicks(matrix)
-                            }
-                            i++
-
-                            Toast.makeText(this, "$normX, $normY", Toast.LENGTH_SHORT).show()
+                            circleView.invalidate()
                             true
                         }
 
@@ -319,6 +346,7 @@ class MainActivity : ComponentActivity() {
                 }
         }
     }
+
 
 
 }
