@@ -14,7 +14,6 @@ import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.activity.ComponentActivity
-import android.util.Log
 import com.example.projectmatrix.connection.websocket.WebsocketConnectionService
 import java.net.Inet4Address
 import java.net.NetworkInterface
@@ -79,6 +78,7 @@ class MainActivity : ComponentActivity() {
             editTextSurname.visibility = View.VISIBLE
             editTextPhone.visibility = View.VISIBLE
             submitButton.visibility = View.VISIBLE
+            ipAddress.visibility = View.GONE
         }
 
         submitButton.setOnClickListener {
@@ -183,7 +183,6 @@ class MainActivity : ComponentActivity() {
     private fun onSuccessfulConnectionStart(ipAddress: TextView, message: String) {
         ipAddress.setTextColor(BLACK)
         ipAddress.text = message
-        Log.d("ActivityMain", "reached")
     }
 
     private fun onFailedConnectionStart(ipAddress: TextView, message: String) {
