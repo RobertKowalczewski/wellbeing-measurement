@@ -2,19 +2,24 @@ package com.example.projectmatrix
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.AlertDialog
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.activity.ComponentActivity
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.constraintlayout.widget.ConstraintSet.Motion
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
-import kotlin.random.Random
+import java.io.BufferedReader
+
 
 data class Location(
     var latitude: Double,
@@ -22,29 +27,36 @@ data class Location(
     var imageName: String
 )
 
+
 class MainActivity : ComponentActivity() {
 
+    //private var currentLatitude: Double = 0.0
+    //private var currentLongitude: Double = 0.0
+
     private lateinit var currentLocation: android.location.Location
+
+    // array to save coordinates
     private val clickCoordinates = mutableListOf<Pair<Float, Float>>()
-    private var lastClickPosition: Pair<Float, Float> = Pair(0.0f, 0.0f)
+    // variable to store last click
+    private var lastClickPosition: Pair<Float, Float> = Pair<Float, Float>(0.0f,0.0f)
+    // current point
     private var currentPoint: Int = 0
-    private val totalPoints: Int = 12
 
+    // declare a global variable of FusedLocationProviderClient
     private lateinit var fusedLocationClient: FusedLocationProviderClient
-    private lateinit var stopCoordinates: List<Location>
 
-    @SuppressLint("ClickableViewAccessibility")
+    @SuppressLint("ClickableViewAccessibility", "WrongViewCast")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         currentLocation = android.location.Location("fused")
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         checkLocationPermission()
+        //run this every 2 seconds
         updateLastKnownLocation()
+        // use functions of android.location.Location to measure distance between locations
 
         setContentView(R.layout.activity_main)
-
-        // Инициализация элементов интерфейса
         val myButton: Button = findViewById(R.id.myButton)
         val submitButton: Button = findViewById(R.id.submitButton)
         val myTextView: TextView = findViewById(R.id.myTextView)
@@ -53,26 +65,58 @@ class MainActivity : ComponentActivity() {
         val editTextPhone: EditText = findViewById(R.id.editTextPhone)
         val imageView: ImageView = findViewById(R.id.imageView)
         val circleView: ImageView = findViewById(R.id.circleView)
-        val matrixConfirmButton: Button = findViewById(R.id.matrixConfirmButton)
+        val matrixConfimButton: Button = findViewById(R.id.matrixConfirmButton)
         val matrixText: ConstraintLayout = findViewById(R.id.matrixText)
-        val locationImageView: ImageView = findViewById(R.id.locationImageView)
-        val areYouHereLayout: ConstraintLayout = findViewById(R.id.areYouHereLayout)
-        val yesButton: Button = findViewById(R.id.yesButton)
-        val areYouSureLayout: ConstraintLayout = findViewById(R.id.areYouSureLayout)
-        val yesSureButton: Button = findViewById(R.id.yesSureButton)
-        val noSureButton: Button = findViewById(R.id.noSureButton)
-        val finishLayout: ConstraintLayout = findViewById(R.id.finishLayout)
-        val finishButton: Button = findViewById(R.id.finishButton)
-
         imageView.setImageResource(R.drawable.test)
         circleView.setImageResource(R.drawable.circle)
 
-        // Инициализируем список локаций случайными значениями
-        stopCoordinates = generateRandomLocations(totalPoints)
+        val stopCoordinates = readScenario("scenario1.scenario")
+
+        matrixConfimButton.setOnClickListener {
+            circleView.visibility = View.GONE
+            clickCoordinates.add(lastClickPosition)
+
+            //Toast.makeText(this, "${lastClickPosition.first}, ${lastClickPosition.second}", Toast.LENGTH_SHORT).show()    what is this
+            val coordinate = stopCoordinates[currentPoint]
+            // checking if user is close to the point according to comparing function
+            val isAtLocation = compareLocation(coordinate)
+            val message = if (isAtLocation) {
+                "You are at the location: ${savedLocation.latitude}, ${savedLocation.longitude}"
+            } else {
+                // If user is NOT at the location, ask for confirmation
+                AlertDialog.Builder(this)
+                    .setTitle("Are you sure?")
+                    .setMessage(
+                        "Your current location does not match the saved location (${savedLocation.latitude}, ${savedLocation.longitude}). " +
+                                "Are you sure you want to confirm that you are at the correct location?"
+                    )
+                    .setPositiveButton("Yes, I'm sure") { _, _ ->
+                        // Proceed as if the location is correct
+                        Toast.makeText(this, "Location confirmed manually.", Toast.LENGTH_SHORT).show()
+                    }
+                    .setNegativeButton("No") { _, _ ->
+                        Toast.makeText(this, "Please check your location again.", Toast.LENGTH_SHORT).show()
+                    }
+                    .show()
+            }
+
+            //here print question if they are sure
+
+            showConfirmationPopup(this, "$coordinate", R.drawable.rofl) {
+                val matrix = findViewById<GridLayout>(R.id.matrix)
+                setupMatrixClicks(matrix)
+            }
+            currentPoint++
+        }
+
+
+
+        // update checking and comparing location between user input and phone location
 
         myButton.setOnClickListener {
+            //print current location
+            println("${currentLocation.latitude} ${currentLocation.longitude}")
             myButton.visibility = View.GONE
-            myTextView.visibility = View.GONE
             editTextName.visibility = View.VISIBLE
             editTextSurname.visibility = View.VISIBLE
             editTextPhone.visibility = View.VISIBLE
@@ -86,140 +130,71 @@ class MainActivity : ComponentActivity() {
 
             if (validateName(name) && validateSurname(surname) && validatePhone(phone)) {
                 hideKeyboard()
+                myTextView.visibility = View.GONE
                 editTextName.visibility = View.GONE
                 editTextSurname.visibility = View.GONE
                 editTextPhone.visibility = View.GONE
                 submitButton.visibility = View.GONE
 
-                // Переходим на экран с матрицей
+                imageView.visibility = View.VISIBLE
                 matrixText.visibility = View.VISIBLE
+                //idk why but it makes it work
                 circleView.visibility = View.INVISIBLE
-                matrixConfirmButton.visibility = View.VISIBLE
 
-                setupMatrix(imageView, circleView)
-                matrixConfirmButton.setOnClickListener {
-                    if (lastClickPosition.first == 0.0f && lastClickPosition.second == 0.0f) {
-                        Toast.makeText(this, "Please select a point on the matrix.", Toast.LENGTH_SHORT).show()
-                    } else {
-                        clickCoordinates.add(lastClickPosition)
-                        lastClickPosition = Pair(0.0f, 0.0f)
-                        circleView.visibility = View.INVISIBLE
 
-                        if (currentPoint < totalPoints) {
-                            showAreYouHereScreen(
-                                stopCoordinates[currentPoint],
-                                locationImageView,
-                                areYouHereLayout,
-                                yesButton
-                            )
-                        } else {
-                            matrixText.visibility = View.GONE
-                            finishLayout.visibility = View.VISIBLE
+                //first cordinate
+                showConfirmationPopup(
+                    this,
+                    "${stopCoordinates[0].latitude} ${stopCoordinates[0].longitude}",
+                    R.drawable.rofl
+                ) {
+                    val matrix = findViewById<GridLayout>(R.id.matrix)
+                    setupMatrixClicks(matrix)
+                }
+
+                imageView.setOnTouchListener { _, event ->
+                    when (event.action) {
+                        MotionEvent.ACTION_DOWN -> {
+                            matrixConfimButton.visibility = View.VISIBLE
+                            circleView.x = imageView.x + event.x - circleView.width / 2
+                            circleView.y = imageView.y + event.y - circleView.height / 2
+                            circleView.visibility = View.VISIBLE
+                            //circleView.invalidate()
+
+
+                            val drawable = imageView.drawable
+                            val imageWidth = drawable.intrinsicWidth
+                            val imageHeight = drawable.intrinsicHeight
+
+                            val normX = event.x / imageWidth
+                            val normY = event.y / imageHeight
+                            lastClickPosition = Pair(normX,normY)
+                            true
                         }
+                        MotionEvent.ACTION_MOVE -> {
+                            circleView.x = imageView.x + event.x - circleView.width / 2
+                            circleView.y = imageView.y + event.y - circleView.height / 2
+
+                            circleView.invalidate()
+                            true
+                        }
+
+                        else -> false
                     }
                 }
+
+                val landmark = "tree" // near building
+                val imageRes = R.drawable.tree
+
+
             } else {
                 Toast.makeText(this, "Please enter correct data.", Toast.LENGTH_SHORT).show()
             }
         }
-
-        yesButton.setOnClickListener {
-            updateLastKnownLocation()
-            val targetLocation = android.location.Location("target")
-            targetLocation.latitude = stopCoordinates[currentPoint].latitude
-            targetLocation.longitude = stopCoordinates[currentPoint].longitude
-            val distance = currentLocation.distanceTo(targetLocation)
-
-            if (distance > 50) {
-                areYouHereLayout.visibility = View.GONE
-                areYouSureLayout.visibility = View.VISIBLE
-            } else {
-                areYouHereLayout.visibility = View.GONE
-                matrixText.visibility = View.VISIBLE
-                matrixConfirmButton.visibility = View.VISIBLE
-                circleView.visibility = View.INVISIBLE
-                currentPoint++
-            }
-        }
-
-        yesSureButton.setOnClickListener {
-            areYouSureLayout.visibility = View.GONE
-            matrixText.visibility = View.VISIBLE
-            matrixConfirmButton.visibility = View.VISIBLE
-            circleView.visibility = View.INVISIBLE
-            currentPoint++
-        }
-
-        noSureButton.setOnClickListener {
-            areYouSureLayout.visibility = View.GONE
-            areYouHereLayout.visibility = View.VISIBLE
-        }
-
-        finishButton.setOnClickListener {
-            Toast.makeText(this, "Thank you for your participation!", Toast.LENGTH_LONG).show()
-            finish()
-        }
-    }
-
-    private fun setupMatrix(imageView: ImageView, circleView: ImageView) {
-        imageView.visibility = View.VISIBLE
-        imageView.setOnTouchListener { _, event ->
-            when (event.action) {
-                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                    val x = event.x
-                    val y = event.y
-
-                    circleView.x = imageView.x + x - circleView.width / 2
-                    circleView.y = imageView.y + y - circleView.height / 2
-                    circleView.visibility = View.VISIBLE
-
-                    val imageWidth = imageView.width
-                    val imageHeight = imageView.height
-
-                    val normX = x / imageWidth
-                    val normY = y / imageHeight
-                    lastClickPosition = Pair(normX, normY)
-                    true
-                }
-                else -> false
-            }
-        }
-    }
-
-    private fun showAreYouHereScreen(
-        location: Location,
-        locationImageView: ImageView,
-        areYouHereLayout: ConstraintLayout,
-        yesButton: Button
-    ) {
-        val matrixText: ConstraintLayout = findViewById(R.id.matrixText)
-        val circleView: ImageView = findViewById(R.id.circleView)
-
-        matrixText.visibility = View.GONE
-        circleView.visibility = View.GONE
-        areYouHereLayout.visibility = View.VISIBLE
-
-        val resId = resources.getIdentifier(location.imageName, "drawable", packageName)
-        if (resId != 0) {
-            locationImageView.setImageResource(resId)
-        } else {
-            locationImageView.setImageResource(R.drawable.tree)
-        }
-    }
-
-    private fun generateRandomLocations(count: Int): List<Location> {
-        val locations = mutableListOf<Location>()
-        for (i in 1..count) {
-            val lat = Random.nextDouble(52.0, 53.0)
-            val lon = Random.nextDouble(16.0, 17.0)
-            val imageName = "loc"
-            locations.add(Location(lat, lon, imageName))
-        }
-        return locations
     }
 
     private fun hideKeyboard() {
-        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         val view = currentFocus ?: View(this)
         imm.hideSoftInputFromWindow(view.windowToken, 0)
     }
@@ -234,6 +209,60 @@ class MainActivity : ComponentActivity() {
 
     private fun validatePhone(phone: String): Boolean {
         return phone.matches(Regex("^\\+?\\d{10,}$"))
+    }
+
+    fun showConfirmationPopup(
+        context: Context,
+        landmark: String,
+        imageRes: Int,
+        onConfirm: () -> Unit
+    ) {
+        AlertDialog.Builder(context)
+            .setTitle("Are you close to $landmark?")
+            .setIcon(imageRes)
+            .setPositiveButton("Confirm") { _, _ -> onConfirm() }
+            .setNegativeButton("Cancel", null)
+            .show()
+
+
+    }
+
+    // click handler for matrix
+    fun setupMatrixClicks(matrix: GridLayout) {
+        for (i in 0 until matrix.childCount) {
+            val cell = matrix.getChildAt(i) as View
+            cell.setOnClickListener {
+                val row = i / matrix.columnCount
+                val col = i % matrix.columnCount
+
+                // Save coordinates to array
+                clickCoordinates.add(Pair(row.toFloat(), col.toFloat()))
+                Toast.makeText(this, "Clicked at row: $row, col: $col", Toast.LENGTH_SHORT).show()
+
+                Log.d("MatrixClicks", "Click coordinates: $clickCoordinates")
+            }
+        }
+    }
+
+    private fun readScenario(fileName: String): List<Location> {
+        val fileContent = assets.open(fileName).bufferedReader().use(BufferedReader::readText)
+
+        val locations = fileContent.lines().mapNotNull { line ->
+            val parts = line.split(", ")
+            if (parts.size == 3) {
+                val latitude = parts[0].toDoubleOrNull()
+                val longitude = parts[1].toDoubleOrNull()
+                val imageName = parts[2]
+                if (latitude != null && longitude != null) {
+                    Location(latitude, longitude, imageName)
+                } else {
+                    null
+                }
+            } else {
+                null
+            }
+        }
+        return locations
     }
 
     private fun checkLocationPermission() {
@@ -274,14 +303,53 @@ class MainActivity : ComponentActivity() {
             fusedLocationClient.lastLocation
                 .addOnSuccessListener { location: android.location.Location? ->
                     if (location != null) {
+                        //currentLatitude = location.latitude
+                        //currentLongitude = location.longitude
                         currentLocation = location
+                        println("set current location $currentLocation")
+
+                        // Example how to calculate the distance
+                        //val results = FloatArray(1)
+                        //val savedLatitude = 52.3984
+                        //val savedLongitude = 16.9486
+                        //android.location.Location.distanceBetween(savedLatitude, savedLongitude, currentLatitude, currentLongitude, results)
+                        //val distanceInMeters = results[0]
+
                     } else {
-                        Toast.makeText(this, "Unable to get location", Toast.LENGTH_SHORT).show()
+                        throw IllegalArgumentException("Location is null")
                     }
                 }
                 .addOnFailureListener { e ->
-                    Toast.makeText(this, "Failed to get location: ${e.message}", Toast.LENGTH_SHORT).show()
+                    throw IllegalArgumentException("Failed to get location: ${e.message}")
                 }
         }
     }
+
+    // function to compare location and point location
+    private fun compareLocation(savedLocation: Location): Boolean {
+
+        val distance: Float
+        //val distance = FloatArray(1)
+        android.location.Location.distanceBetween(
+            currentLocation.latitude,
+            currentLocation.longitude,
+            savedLocation.latitude,
+            savedLocation.longitude,
+            distance
+        )
+        return distance[0] < 10  // gps is usually +- 10 metres
+        // returns true if closer than 10m and false if more
+    }
+
+
+
+
 }
+
+
+
+
+
+
+
+
