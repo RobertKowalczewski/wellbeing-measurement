@@ -2,8 +2,10 @@ package com.example.projectmatrix
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.InputMethodManager
@@ -12,9 +14,19 @@ import androidx.activity.ComponentActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.room.Room.databaseBuilder
+import com.example.projectmatrix.storage.config.AppDatabase
+import com.example.projectmatrix.storage.dao.model.user.WellbeingUser
+import com.example.projectmatrix.storage.service.user.WellbeingUserService
+import com.facebook.stetho.Stetho
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import java.util.concurrent.Executors
+import java.util.stream.Collectors
 import kotlin.random.Random
+
 
 data class Location(
     var latitude: Double,
@@ -36,6 +48,8 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val db = setupDatabase()
 
         currentLocation = android.location.Location("fused")
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
@@ -159,6 +173,15 @@ class MainActivity : ComponentActivity() {
             Toast.makeText(this, "Thank you for your participation!", Toast.LENGTH_LONG).show()
             finish()
         }
+    }
+
+    private fun setupDatabase(): AppDatabase {
+        return databaseBuilder(
+            this,
+            AppDatabase::class.java,
+            "storage"
+        )
+            .build();
     }
 
     private fun setupMatrix(imageView: ImageView, circleView: ImageView) {

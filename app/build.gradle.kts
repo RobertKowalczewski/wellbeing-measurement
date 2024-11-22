@@ -6,12 +6,12 @@ plugins {
 
 android {
     namespace = "com.example.projectmatrix"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.projectmatrix"
-        minSdk = 24
-        targetSdk = 34
+        minSdk = 29
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -52,6 +52,11 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.appcompat)
     implementation(libs.play.services.location)
+    implementation("com.facebook.stetho:stetho:1.6.0")
+    compileOnly(libs.lombok)
+    annotationProcessor(libs.room.compiler)
+    runtimeOnly(libs.room.common)
+    implementation(libs.room.runtime)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
