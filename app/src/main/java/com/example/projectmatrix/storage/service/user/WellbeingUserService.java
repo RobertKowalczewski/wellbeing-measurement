@@ -14,4 +14,19 @@ public class WellbeingUserService extends AbstractService<WellbeingUser> {
 
         this.wellbeingUserRepository = repository;
     }
+
+    public WellbeingUser findOrCreateUser(String name, String surname, String phone) {
+
+        var user = wellbeingUserRepository.findByNameAndSurnameAndPhone(name, surname, phone);
+
+        if (user.isEmpty()) {
+            var newUser = new WellbeingUser();
+            newUser.name = name;
+            newUser.surname = surname;
+            newUser.phoneNumber = phone;
+            save(newUser);
+            return newUser;
+        }
+        return user.get();
+    }
 }

@@ -52,7 +52,6 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.appcompat)
     implementation(libs.play.services.location)
-    implementation("com.facebook.stetho:stetho:1.6.0")
     compileOnly(libs.lombok)
     annotationProcessor(libs.room.compiler)
     runtimeOnly(libs.room.common)

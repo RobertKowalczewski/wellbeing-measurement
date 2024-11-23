@@ -8,7 +8,6 @@ import com.example.projectmatrix.storage.dao.repository.AbstractRepository;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Dao
 public interface WellbeingUserRepository extends AbstractRepository<WellbeingUser> {
@@ -20,4 +19,7 @@ public interface WellbeingUserRepository extends AbstractRepository<WellbeingUse
     @Override
     @Query("SELECT * FROM wellbeingUser WHERE id = :id")
     Optional<WellbeingUser> findById(long id);
+
+    @Query("SELECT * FROM wellbeinguser WHERE name = :name AND surname = :surname AND phoneNumber = :phone")
+    Optional<WellbeingUser> findByNameAndSurnameAndPhone(String name, String surname, String phone);
 }
