@@ -2,8 +2,9 @@ package com.example.projectmatrix
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.util.Log
 import android.view.MotionEvent
@@ -18,13 +19,10 @@ import androidx.room.Room.databaseBuilder
 import com.example.projectmatrix.storage.config.AppDatabase
 import com.example.projectmatrix.storage.dao.model.user.WellbeingUser
 import com.example.projectmatrix.storage.service.user.WellbeingUserService
-import com.facebook.stetho.Stetho
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import java.util.concurrent.Executors
-import java.util.stream.Collectors
 import kotlin.random.Random
 
 
@@ -41,6 +39,27 @@ class MainActivity : ComponentActivity() {
     private var lastClickPosition: Pair<Float, Float> = Pair(0.0f, 0.0f)
     private var currentPoint: Int = 0
     private val totalPoints: Int = 12
+    private var wellbeingUser: WellbeingUser? = null
+    private var db: AppDatabase? = null
+    private lateinit var myButton: Button
+    private lateinit var submitButton: Button
+    private lateinit var myTextView: TextView
+    private lateinit var editTextName: EditText
+    private lateinit var editTextSurname: EditText
+    private lateinit var editTextPhone: EditText
+    private lateinit var imageView: ImageView
+    private lateinit var circleView: ImageView
+    private lateinit var matrixConfirmButton: Button
+    private lateinit var matrixText: ConstraintLayout
+    private lateinit var locationImageView: ImageView
+    private lateinit var areYouHereLayout: ConstraintLayout
+    private lateinit var yesButton: Button
+    private lateinit var areYouSureLayout: ConstraintLayout
+    private lateinit var yesSureButton: Button
+    private lateinit var noSureButton: Button
+    private lateinit var finishLayout: ConstraintLayout
+    private lateinit var finishButton: Button
+    private lateinit var registeredUsersLayout: LinearLayout
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var stopCoordinates: List<Location>
@@ -49,7 +68,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val db = setupDatabase()
+        db = setupDatabase()
 
         currentLocation = android.location.Location("fused")
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
@@ -59,27 +78,29 @@ class MainActivity : ComponentActivity() {
         setContentView(R.layout.activity_main)
 
         // Инициализация элементов интерфейса
-        val myButton: Button = findViewById(R.id.myButton)
-        val submitButton: Button = findViewById(R.id.submitButton)
-        val myTextView: TextView = findViewById(R.id.myTextView)
-        val editTextName: EditText = findViewById(R.id.editTextName)
-        val editTextSurname: EditText = findViewById(R.id.editTextSurname)
-        val editTextPhone: EditText = findViewById(R.id.editTextPhone)
-        val imageView: ImageView = findViewById(R.id.imageView)
-        val circleView: ImageView = findViewById(R.id.circleView)
-        val matrixConfirmButton: Button = findViewById(R.id.matrixConfirmButton)
-        val matrixText: ConstraintLayout = findViewById(R.id.matrixText)
-        val locationImageView: ImageView = findViewById(R.id.locationImageView)
-        val areYouHereLayout: ConstraintLayout = findViewById(R.id.areYouHereLayout)
-        val yesButton: Button = findViewById(R.id.yesButton)
-        val areYouSureLayout: ConstraintLayout = findViewById(R.id.areYouSureLayout)
-        val yesSureButton: Button = findViewById(R.id.yesSureButton)
-        val noSureButton: Button = findViewById(R.id.noSureButton)
-        val finishLayout: ConstraintLayout = findViewById(R.id.finishLayout)
-        val finishButton: Button = findViewById(R.id.finishButton)
+        myButton = findViewById(R.id.myButton)
+        submitButton = findViewById(R.id.submitButton)
+        myTextView = findViewById(R.id.myTextView)
+        editTextName = findViewById(R.id.editTextName)
+        editTextSurname = findViewById(R.id.editTextSurname)
+        editTextPhone = findViewById(R.id.editTextPhone)
+        imageView = findViewById(R.id.imageView)
+        circleView = findViewById(R.id.circleView)
+        matrixConfirmButton = findViewById(R.id.matrixConfirmButton)
+        matrixText = findViewById(R.id.matrixText)
+        locationImageView = findViewById(R.id.locationImageView)
+        areYouHereLayout = findViewById(R.id.areYouHereLayout)
+        yesButton = findViewById(R.id.yesButton)
+        areYouSureLayout = findViewById(R.id.areYouSureLayout)
+        yesSureButton = findViewById(R.id.yesSureButton)
+        noSureButton = findViewById(R.id.noSureButton)
+        finishLayout = findViewById(R.id.finishLayout)
+        finishButton = findViewById(R.id.finishButton)
+        registeredUsersLayout = findViewById(R.id.registeredUsersLayout)
 
         imageView.setImageResource(R.drawable.test)
         circleView.setImageResource(R.drawable.circle)
+        setRegisteredUsers()
 
         // Инициализируем список локаций случайными значениями
         stopCoordinates = generateRandomLocations(totalPoints)
@@ -91,6 +112,7 @@ class MainActivity : ComponentActivity() {
             editTextSurname.visibility = View.VISIBLE
             editTextPhone.visibility = View.VISIBLE
             submitButton.visibility = View.VISIBLE
+            registeredUsersLayout.visibility = View.VISIBLE
         }
 
         submitButton.setOnClickListener {
@@ -99,39 +121,7 @@ class MainActivity : ComponentActivity() {
             val phone = editTextPhone.text.toString()
 
             if (validateName(name) && validateSurname(surname) && validatePhone(phone)) {
-                hideKeyboard()
-                editTextName.visibility = View.GONE
-                editTextSurname.visibility = View.GONE
-                editTextPhone.visibility = View.GONE
-                submitButton.visibility = View.GONE
-
-                // Переходим на экран с матрицей
-                matrixText.visibility = View.VISIBLE
-                circleView.visibility = View.INVISIBLE
-                matrixConfirmButton.visibility = View.VISIBLE
-
-                setupMatrix(imageView, circleView)
-                matrixConfirmButton.setOnClickListener {
-                    if (lastClickPosition.first == 0.0f && lastClickPosition.second == 0.0f) {
-                        Toast.makeText(this, "Please select a point on the matrix.", Toast.LENGTH_SHORT).show()
-                    } else {
-                        clickCoordinates.add(lastClickPosition)
-                        lastClickPosition = Pair(0.0f, 0.0f)
-                        circleView.visibility = View.INVISIBLE
-
-                        if (currentPoint < totalPoints) {
-                            showAreYouHereScreen(
-                                stopCoordinates[currentPoint],
-                                locationImageView,
-                                areYouHereLayout,
-                                yesButton
-                            )
-                        } else {
-                            matrixText.visibility = View.GONE
-                            finishLayout.visibility = View.VISIBLE
-                        }
-                    }
-                }
+                goToMatrix(name, surname, phone)
             } else {
                 Toast.makeText(this, "Please enter correct data.", Toast.LENGTH_SHORT).show()
             }
@@ -175,6 +165,46 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun goToMatrix(name: String, surname: String, phone: String) {
+        setUser(name, surname, phone)
+
+        hideKeyboard()
+        editTextName.visibility = View.GONE
+        editTextSurname.visibility = View.GONE
+        editTextPhone.visibility = View.GONE
+        submitButton.visibility = View.GONE
+        registeredUsersLayout.visibility = View.GONE
+
+        // Переходим на экран с матрицей
+        matrixText.visibility = View.VISIBLE
+        circleView.visibility = View.INVISIBLE
+        matrixConfirmButton.visibility = View.VISIBLE
+
+        setupMatrix(imageView, circleView)
+        matrixConfirmButton.setOnClickListener {
+            if (lastClickPosition.first == 0.0f && lastClickPosition.second == 0.0f) {
+                Toast.makeText(this, "Please select a point on the matrix.", Toast.LENGTH_SHORT)
+                    .show()
+            } else {
+                clickCoordinates.add(lastClickPosition)
+                lastClickPosition = Pair(0.0f, 0.0f)
+                circleView.visibility = View.INVISIBLE
+
+                if (currentPoint < totalPoints) {
+                    showAreYouHereScreen(
+                        stopCoordinates[currentPoint],
+                        locationImageView,
+                        areYouHereLayout,
+                        yesButton
+                    )
+                } else {
+                    matrixText.visibility = View.GONE
+                    finishLayout.visibility = View.VISIBLE
+                }
+            }
+        }
+    }
+
     private fun setupDatabase(): AppDatabase {
         return databaseBuilder(
             this,
@@ -182,6 +212,18 @@ class MainActivity : ComponentActivity() {
             "storage"
         )
             .build();
+    }
+
+    private fun setUser(name: String, surname: String, phone: String) {
+        GlobalScope.launch {
+            val userService = WellbeingUserService(db?.wellbeingUserRepository())
+            wellbeingUser = userService.findOrCreateUser(name, surname, phone)
+
+            runOnUiThread {
+                Log.i("main", "USER: " + wellbeingUser)
+                Log.i("main", "Data: " + wellbeingUser?.name + " " + wellbeingUser?.surname + " " + wellbeingUser?.creationTimestamp + " " + wellbeingUser?.modificationTimestamp)
+            }
+        }
     }
 
     private fun setupMatrix(imageView: ImageView, circleView: ImageView) {
@@ -305,6 +347,54 @@ class MainActivity : ComponentActivity() {
                 .addOnFailureListener { e ->
                     Toast.makeText(this, "Failed to get location: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
+        }
+    }
+
+    private fun setRegisteredUsers() {
+        GlobalScope.launch {
+            val userService = WellbeingUserService(db?.wellbeingUserRepository())
+            val wellBeingUsers = userService.findAll()
+
+            runOnUiThread {
+                setRegisteredUsersLayout(wellBeingUsers)
+            }
+        }
+    }
+
+    private fun setRegisteredUsersLayout(wellbeingUsers: List<WellbeingUser>) {
+        registeredUsersLayout.removeAllViews()
+
+        wellbeingUsers.forEach { user: WellbeingUser ->
+            val row = LinearLayout(this)
+            row.orientation = LinearLayout.HORIZONTAL
+
+            val border = GradientDrawable()
+            border.setColor(Color.WHITE)
+            border.setStroke(2, Color.BLACK)
+            border.cornerRadius = 8f
+            row.background = border
+
+            val name = TextView(this)
+            name.setMinWidth(300)
+            name.text = user.name
+            name.setPadding(10, 40, 0, 40)
+            row.addView(name)
+
+            val surname = TextView(this)
+            surname.setMinWidth(300)
+            surname.text = user.surname
+            row.addView(surname)
+
+            val phone = TextView(this)
+            phone.setMinWidth(300)
+            phone.text = user.phoneNumber
+            row.addView(phone)
+
+            row.setOnClickListener {
+                goToMatrix(user.name, user.surname, user.phoneNumber)
+            }
+
+            registeredUsersLayout.addView(row)
         }
     }
 }
