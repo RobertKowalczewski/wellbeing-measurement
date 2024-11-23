@@ -17,7 +17,10 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.room.Room.databaseBuilder
 import com.example.projectmatrix.storage.config.AppDatabase
+import com.example.projectmatrix.storage.dao.model.matrix.MatrixData
 import com.example.projectmatrix.storage.dao.model.user.WellbeingUser
+import com.example.projectmatrix.storage.service.matrix.MatrixDataFactory
+import com.example.projectmatrix.storage.service.matrix.MatrixDataService
 import com.example.projectmatrix.storage.service.user.WellbeingUserService
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
@@ -35,12 +38,12 @@ data class Location(
 class MainActivity : ComponentActivity() {
 
     private lateinit var currentLocation: android.location.Location
-    private val clickCoordinates = mutableListOf<Pair<Float, Float>>()
-    private var lastClickPosition: Pair<Float, Float> = Pair(0.0f, 0.0f)
+    private val clickCoordinates = mutableListOf<Pair<Double, Double>>()
+    private var lastClickPosition: Pair<Double, Double> = Pair(0.0, 0.0)
     private var currentPoint: Int = 0
     private val totalPoints: Int = 12
     private var wellbeingUser: WellbeingUser? = null
-    private var db: AppDatabase? = null
+    private lateinit var db: AppDatabase
     private lateinit var myButton: Button
     private lateinit var submitButton: Button
     private lateinit var myTextView: TextView
@@ -138,6 +141,8 @@ class MainActivity : ComponentActivity() {
                 areYouHereLayout.visibility = View.GONE
                 areYouSureLayout.visibility = View.VISIBLE
             } else {
+                saveMatrixData()
+
                 areYouHereLayout.visibility = View.GONE
                 matrixText.visibility = View.VISIBLE
                 matrixConfirmButton.visibility = View.VISIBLE
@@ -165,6 +170,22 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun saveMatrixData() {
+        GlobalScope.launch {
+            val matrixDataService = MatrixDataService(db.matrixDataRepository())
+            val matrixDataFactory = MatrixDataFactory(matrixDataService)
+
+            val matrixData = matrixDataFactory.create(
+                wellbeingUser,
+                currentLocation.longitude,
+                currentLocation.latitude,
+                clickCoordinates.get(clickCoordinates.size - 1).first,
+                clickCoordinates.get(clickCoordinates.size - 1).second
+            )
+            matrixDataService.save(matrixData)
+        }
+    }
+
     private fun goToMatrix(name: String, surname: String, phone: String) {
         setUser(name, surname, phone)
 
@@ -182,12 +203,12 @@ class MainActivity : ComponentActivity() {
 
         setupMatrix(imageView, circleView)
         matrixConfirmButton.setOnClickListener {
-            if (lastClickPosition.first == 0.0f && lastClickPosition.second == 0.0f) {
+            if (lastClickPosition.first == 0.0 && lastClickPosition.second == 0.0) {
                 Toast.makeText(this, "Please select a point on the matrix.", Toast.LENGTH_SHORT)
                     .show()
             } else {
                 clickCoordinates.add(lastClickPosition)
-                lastClickPosition = Pair(0.0f, 0.0f)
+                lastClickPosition = Pair(0.0, 0.0)
                 circleView.visibility = View.INVISIBLE
 
                 if (currentPoint < totalPoints) {
@@ -211,12 +232,13 @@ class MainActivity : ComponentActivity() {
             AppDatabase::class.java,
             "storage"
         )
+            .fallbackToDestructiveMigration()
             .build();
     }
 
     private fun setUser(name: String, surname: String, phone: String) {
         GlobalScope.launch {
-            val userService = WellbeingUserService(db?.wellbeingUserRepository())
+            val userService = WellbeingUserService(db.wellbeingUserRepository())
             wellbeingUser = userService.findOrCreateUser(name, surname, phone)
 
             runOnUiThread {
@@ -243,7 +265,7 @@ class MainActivity : ComponentActivity() {
 
                     val normX = x / imageWidth
                     val normY = y / imageHeight
-                    lastClickPosition = Pair(normX, normY)
+                    lastClickPosition = Pair(normX.toDouble(), normY.toDouble())
                     true
                 }
                 else -> false
@@ -352,7 +374,7 @@ class MainActivity : ComponentActivity() {
 
     private fun setRegisteredUsers() {
         GlobalScope.launch {
-            val userService = WellbeingUserService(db?.wellbeingUserRepository())
+            val userService = WellbeingUserService(db.wellbeingUserRepository())
             val wellBeingUsers = userService.findAll()
 
             runOnUiThread {
