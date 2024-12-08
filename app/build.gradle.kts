@@ -6,12 +6,12 @@ plugins {
 
 android {
     namespace = "com.example.projectmatrix"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.projectmatrix"
-        minSdk = 24
-        targetSdk = 34
+        minSdk = 29
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -56,6 +56,10 @@ dependencies {
     implementation(libs.lombok)
     implementation(libs.java.websocket)
     implementation(libs.play.services.location)
+    compileOnly(libs.lombok)
+    annotationProcessor(libs.room.compiler)
+    runtimeOnly(libs.room.common)
+    implementation(libs.room.runtime)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
