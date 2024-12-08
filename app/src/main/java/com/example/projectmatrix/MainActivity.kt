@@ -35,6 +35,7 @@ import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import java.io.BufferedReader
 import kotlin.random.Random
 
 
@@ -402,7 +403,7 @@ class MainActivity : ComponentActivity() {
                 val col = i % matrix.columnCount
 
                 // Save coordinates to array
-                clickCoordinates.add(Pair(row.toFloat(), col.toFloat()))
+                clickCoordinates.add(Pair(row.toDouble(), col.toDouble()))
                 Toast.makeText(this, "Clicked at row: $row, col: $col", Toast.LENGTH_SHORT).show()
 
                 Log.d("MatrixClicks", "Click coordinates: $clickCoordinates")
