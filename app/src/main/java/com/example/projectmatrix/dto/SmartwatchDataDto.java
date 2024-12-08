@@ -1,9 +1,9 @@
 package com.example.projectmatrix.dto;
 
-import lombok.Data;
-
-@Data
 public class SmartwatchDataDto {
-    private int heartRate;
-    private int pulse;
+    public double heartRate;
+
+    public SmartwatchDataDto(double heartRate) {
+        this.heartRate = heartRate;
+    }
 }

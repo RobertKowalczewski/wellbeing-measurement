@@ -17,25 +17,25 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.activity.ComponentActivity
 import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.constraintlayout.widget.ConstraintSet.Motion
-import com.example.projectmatrix.connection.websocket.WebsocketConnectionService
-import java.net.Inet4Address
-import java.net.NetworkInterface
-import java.net.SocketException
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.room.Room.databaseBuilder
+import com.example.projectmatrix.connection.websocket.WebsocketConnectionService
+import com.example.projectmatrix.dto.SmartwatchDataDto
 import com.example.projectmatrix.storage.config.AppDatabase
-import com.example.projectmatrix.storage.dao.model.matrix.MatrixData
 import com.example.projectmatrix.storage.dao.model.user.WellbeingUser
 import com.example.projectmatrix.storage.service.matrix.MatrixDataFactory
 import com.example.projectmatrix.storage.service.matrix.MatrixDataService
+import com.example.projectmatrix.storage.service.smartwatch.SmartwatchDataService
 import com.example.projectmatrix.storage.service.user.WellbeingUserService
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.io.BufferedReader
+import java.net.Inet4Address
+import java.net.NetworkInterface
+import java.net.SocketException
 import kotlin.random.Random
 
 
@@ -184,6 +184,51 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun startWatchConnection(ipAddress: TextView) {
+        val address = getLocalIpAddress()
+        address?.let {
+            try {
+                val websocketService = WebsocketConnectionService(address, 5000, this)
+                websocketService.start()
+                onSuccessfulConnectionStart(ipAddress, address)
+            } catch (ex: Exception) {
+                onFailedConnectionStart(ipAddress, "Failed to start websocket server")
+            }
+        } ?: run {
+            onFailedConnectionStart(ipAddress,"Failed to find IP address")
+        }
+    }
+
+    private fun onSuccessfulConnectionStart(ipAddress: TextView, message: String) {
+        ipAddress.setTextColor(BLACK)
+        ipAddress.text = message
+    }
+
+    private fun onFailedConnectionStart(ipAddress: TextView, message: String) {
+        ipAddress.setTextColor(RED)
+        ipAddress.text = message
+    }
+
+    private fun getLocalIpAddress(): String? {
+        try {
+            val en = NetworkInterface.getNetworkInterfaces()
+            while (en.hasMoreElements()) {
+                val networkInterface = en.nextElement()
+                val enumIpAddresses = networkInterface.inetAddresses
+                while (enumIpAddresses.hasMoreElements()) {
+                    val inetAddress = enumIpAddresses.nextElement()
+                    if (!inetAddress.isLoopbackAddress && inetAddress is Inet4Address) {
+                        Log.d("ActivityMain", "IPv4 Address: ${inetAddress.hostAddress}")
+                        return inetAddress.hostAddress
+                    }
+                }
+            }
+        } catch (ex: SocketException) {
+            ex.printStackTrace()
+        }
+        return null
+    }
+
     private fun saveMatrixData() {
         GlobalScope.launch {
             val matrixDataService = MatrixDataService(db.matrixDataRepository())
@@ -256,7 +301,6 @@ class MainActivity : ComponentActivity() {
             wellbeingUser = userService.findOrCreateUser(name, surname, phone)
 
             runOnUiThread {
-                Log.i("main", "USER: " + wellbeingUser)
                 Log.i("main", "Data: " + wellbeingUser?.name + " " + wellbeingUser?.surname + " " + wellbeingUser?.creationTimestamp + " " + wellbeingUser?.modificationTimestamp)
             }
         }
@@ -337,51 +381,6 @@ class MainActivity : ComponentActivity() {
         return phone.matches(Regex("^\\+?\\d{10,}$"))
     }
 
-    private fun startWatchConnection(ipAddress: TextView) {
-        val address = getLocalIpAddress()
-        address?.let {
-            try {
-                val websocketService = WebsocketConnectionService(address, 5000, this)
-                websocketService.start()
-                onSuccessfulConnectionStart(ipAddress, address)
-            } catch (ex: Exception) {
-                onFailedConnectionStart(ipAddress, "Failed to start websocket server")
-            }
-        } ?: run {
-            onFailedConnectionStart(ipAddress,"Failed to find IP address")
-        }
-    }
-
-    private fun onSuccessfulConnectionStart(ipAddress: TextView, message: String) {
-        ipAddress.setTextColor(BLACK)
-        ipAddress.text = message
-    }
-
-    private fun onFailedConnectionStart(ipAddress: TextView, message: String) {
-        ipAddress.setTextColor(RED)
-        ipAddress.text = message
-    }
-
-    private fun getLocalIpAddress(): String? {
-        try {
-            val en = NetworkInterface.getNetworkInterfaces()
-            while (en.hasMoreElements()) {
-                val networkInterface = en.nextElement()
-                val enumIpAddresses = networkInterface.inetAddresses
-                while (enumIpAddresses.hasMoreElements()) {
-                    val inetAddress = enumIpAddresses.nextElement()
-                    if (!inetAddress.isLoopbackAddress && inetAddress is Inet4Address) {
-                        Log.d("ActivityMain", "IPv4 Address: ${inetAddress.hostAddress}")
-                        return inetAddress.hostAddress
-                    }
-                }
-            }
-        } catch (ex: SocketException) {
-            ex.printStackTrace()
-        }
-        return null
-    }
-
     fun showConfirmationPopup(context: Context, landmark: String, imageRes: Int, onConfirm: () -> Unit) {
 
         AlertDialog.Builder(context)
@@ -390,8 +389,6 @@ class MainActivity : ComponentActivity() {
             .setPositiveButton("Confirm") { _, _ -> onConfirm() }
             .setNegativeButton("Cancel", null)
             .show()
-
-
     }
 
     // click handler for matrix
@@ -526,6 +523,19 @@ class MainActivity : ComponentActivity() {
             }
 
             registeredUsersLayout.addView(row)
+        }
+    }
+
+    fun saveWatchData(watchData: SmartwatchDataDto) {
+        if (wellbeingUser != null) {
+            GlobalScope.launch {
+                val smartwatchDataService = SmartwatchDataService(db.smartwatchDataRepository())
+
+                val smartWatchData = smartwatchDataService.createFor(wellbeingUser)
+                smartWatchData.heartRate = watchData.heartRate
+
+                smartwatchDataService.save(smartWatchData)
+            }
         }
     }
 }
