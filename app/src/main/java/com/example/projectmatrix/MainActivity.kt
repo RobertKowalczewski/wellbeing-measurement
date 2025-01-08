@@ -51,7 +51,7 @@ class MainActivity : ComponentActivity() {
     private val clickCoordinates = mutableListOf<Pair<Double, Double>>()
     private var lastClickPosition: Pair<Double, Double> = Pair(0.0, 0.0)
     private var currentPoint: Int = 0
-    private val totalPoints: Int = 12
+    private var totalPoints: Int = 0
     private var wellbeingUser: WellbeingUser? = null
     private lateinit var db: AppDatabase
     private lateinit var myButton: Button
@@ -119,8 +119,12 @@ class MainActivity : ComponentActivity() {
         setRegisteredUsers()
 
         // Инициализируем список локаций случайными значениями
-        stopCoordinates = generateRandomLocations(totalPoints)
-
+        stopCoordinates = readScenarioFile("scenario1.scenario")
+        if (stopCoordinates.isEmpty()) {
+            Toast.makeText(this, "No locations found in scenario file", Toast.LENGTH_LONG).show()
+            finish() // Закрываем приложение, если файл пуст
+        }
+        totalPoints = stopCoordinates.size
         myButton.setOnClickListener {
             myButton.visibility = View.GONE
             myTextView.visibility = View.GONE
@@ -138,7 +142,39 @@ class MainActivity : ComponentActivity() {
             val phone = editTextPhone.text.toString()
 
             if (validateName(name) && validateSurname(surname) && validatePhone(phone)) {
-                goToMatrix(name, surname, phone)
+                hideKeyboard()
+                editTextName.visibility = View.GONE
+                editTextSurname.visibility = View.GONE
+                editTextPhone.visibility = View.GONE
+                submitButton.visibility = View.GONE
+
+                // Переходим на экран с матрицей
+                matrixText.visibility = View.VISIBLE
+                circleView.visibility = View.INVISIBLE
+                matrixConfirmButton.visibility = View.VISIBLE
+
+                setupMatrix(imageView, circleView)
+                matrixConfirmButton.setOnClickListener {
+                    if (lastClickPosition.first == 0.0 && lastClickPosition.second == 0.0) {
+                        Toast.makeText(this, "Please select a point on the matrix.", Toast.LENGTH_SHORT).show()
+                    } else {
+                        clickCoordinates.add(lastClickPosition)
+                        lastClickPosition = Pair(0.0, 0.0)
+                        circleView.visibility = View.INVISIBLE
+
+                        if (currentPoint < totalPoints) {
+                            showAreYouHereScreen(
+                                stopCoordinates[currentPoint],
+                                locationImageView,
+                                areYouHereLayout,
+                                yesButton
+                            )
+                        } else {
+                            matrixText.visibility = View.GONE
+                            finishLayout.visibility = View.VISIBLE
+                        }
+                    }
+                }
             } else {
                 Toast.makeText(this, "Please enter correct data.", Toast.LENGTH_SHORT).show()
             }
@@ -253,7 +289,6 @@ class MainActivity : ComponentActivity() {
         editTextSurname.visibility = View.GONE
         editTextPhone.visibility = View.GONE
         submitButton.visibility = View.GONE
-        registeredUsersLayout.visibility = View.GONE
 
         // Переходим на экран с матрицей
         matrixText.visibility = View.VISIBLE
@@ -263,8 +298,7 @@ class MainActivity : ComponentActivity() {
         setupMatrix(imageView, circleView)
         matrixConfirmButton.setOnClickListener {
             if (lastClickPosition.first == 0.0 && lastClickPosition.second == 0.0) {
-                Toast.makeText(this, "Please select a point on the matrix.", Toast.LENGTH_SHORT)
-                    .show()
+                Toast.makeText(this, "Please select a point on the matrix.", Toast.LENGTH_SHORT).show()
             } else {
                 clickCoordinates.add(lastClickPosition)
                 lastClickPosition = Pair(0.0, 0.0)
@@ -308,6 +342,7 @@ class MainActivity : ComponentActivity() {
 
     private fun setupMatrix(imageView: ImageView, circleView: ImageView) {
         imageView.visibility = View.VISIBLE
+        registeredUsersLayout.visibility = View.GONE
         imageView.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
@@ -344,21 +379,37 @@ class MainActivity : ComponentActivity() {
         circleView.visibility = View.GONE
         areYouHereLayout.visibility = View.VISIBLE
 
-        val resId = resources.getIdentifier(location.imageName, "drawable", packageName)
+        // Получаем идентификатор ресурса по имени
+        val resId = resources.getIdentifier(location.imageName.substringBeforeLast("."), "drawable", packageName)
         if (resId != 0) {
             locationImageView.setImageResource(resId)
         } else {
-            locationImageView.setImageResource(R.drawable.tree)
+            locationImageView.setImageResource(R.drawable.tree) // Установите изображение по умолчанию
         }
     }
 
-    private fun generateRandomLocations(count: Int): List<Location> {
+
+
+    private fun readScenarioFile(fileName: String): List<Location> {
         val locations = mutableListOf<Location>()
-        for (i in 1..count) {
-            val lat = Random.nextDouble(52.0, 53.0)
-            val lon = Random.nextDouble(16.0, 17.0)
-            val imageName = "loc"
-            locations.add(Location(lat, lon, imageName))
+        try {
+            val inputStream = assets.open(fileName)
+            inputStream.bufferedReader().use { reader ->
+                reader.lineSequence().forEach { line ->
+                    val parts = line.split(", ")
+                    if (parts.size == 3) {
+                        val latitude = parts[0].toDoubleOrNull()
+                        val longitude = parts[1].toDoubleOrNull()
+                        val imageName = parts[2]
+                        if (latitude != null && longitude != null) {
+                            locations.add(Location(latitude, longitude, imageName))
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(this, "Failed to read scenario file", Toast.LENGTH_SHORT).show()
         }
         return locations
     }
