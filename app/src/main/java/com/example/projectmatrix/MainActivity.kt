@@ -83,6 +83,18 @@ class MainActivity : ComponentActivity() {
 
         db = setupDatabase()
 
+        GlobalScope.launch {
+            val smartwatchDataService = SmartwatchDataService(db.smartwatchDataRepository())
+            val data = smartwatchDataService.findAll()
+            runOnUiThread {
+                Log.d("watch_data", "Data from watch: " + data.size)
+
+                data.forEach { row ->
+                    Log.d("watch_data", row.toString())
+                }
+            }
+        }
+
         currentLocation = android.location.Location("fused")
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         checkLocationPermission()
