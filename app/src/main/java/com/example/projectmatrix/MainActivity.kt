@@ -154,39 +154,7 @@ class MainActivity : ComponentActivity() {
             val phone = editTextPhone.text.toString()
 
             if (validateName(name) && validateSurname(surname) && validatePhone(phone)) {
-                hideKeyboard()
-                editTextName.visibility = View.GONE
-                editTextSurname.visibility = View.GONE
-                editTextPhone.visibility = View.GONE
-                submitButton.visibility = View.GONE
-
-                // Переходим на экран с матрицей
-                matrixText.visibility = View.VISIBLE
-                circleView.visibility = View.INVISIBLE
-                matrixConfirmButton.visibility = View.VISIBLE
-
-                setupMatrix(imageView, circleView)
-                matrixConfirmButton.setOnClickListener {
-                    if (lastClickPosition.first == 0.0 && lastClickPosition.second == 0.0) {
-                        Toast.makeText(this, "Please select a point on the matrix.", Toast.LENGTH_SHORT).show()
-                    } else {
-                        clickCoordinates.add(lastClickPosition)
-                        lastClickPosition = Pair(0.0, 0.0)
-                        circleView.visibility = View.INVISIBLE
-
-                        if (currentPoint < totalPoints) {
-                            showAreYouHereScreen(
-                                stopCoordinates[currentPoint],
-                                locationImageView,
-                                areYouHereLayout,
-                                yesButton
-                            )
-                        } else {
-                            matrixText.visibility = View.GONE
-                            finishLayout.visibility = View.VISIBLE
-                        }
-                    }
-                }
+                goToMatrix(name, surname, phone)
             } else {
                 Toast.makeText(this, "Please enter correct data.", Toast.LENGTH_SHORT).show()
             }
