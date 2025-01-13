@@ -20,6 +20,9 @@ public interface WellbeingUserRepository extends AbstractRepository<WellbeingUse
     @Query("SELECT * FROM wellbeingUser WHERE id = :id")
     Optional<WellbeingUser> findById(long id);
 
-    @Query("SELECT * FROM wellbeinguser WHERE name = :name AND surname = :surname AND phoneNumber = :phone")
+    @Query("SELECT * FROM wellbeingUser WHERE name = :name AND surname = :surname AND phoneNumber = :phone")
     Optional<WellbeingUser> findByNameAndSurnameAndPhone(String name, String surname, String phone);
+
+    @Query("SELECT * FROM wellbeinguser u LEFT JOIN matrixData m ON u.id = m.wellbeingUserId LEFT JOIN smartwatchData s ON u.id = s.wellbeingUserId")
+    List<String[]> getFullData(long wellbeingUserId);
 }

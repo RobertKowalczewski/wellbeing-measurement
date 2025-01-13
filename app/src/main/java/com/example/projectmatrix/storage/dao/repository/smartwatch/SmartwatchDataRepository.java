@@ -13,7 +13,7 @@ import java.util.Optional;
 public interface SmartwatchDataRepository extends AbstractRepository<SmartwatchData> {
 
     @Override
-    @Query("SELECT * FROM smartwatchdata")
+    @Query("SELECT * FROM smartwatchData")
     List<SmartwatchData> findAll();
 
     @Override
