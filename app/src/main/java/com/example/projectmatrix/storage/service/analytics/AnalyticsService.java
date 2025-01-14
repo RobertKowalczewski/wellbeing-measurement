@@ -1,17 +1,24 @@
 package com.example.projectmatrix.storage.service.analytics;
 
 import com.example.projectmatrix.storage.dao.repository.user.WellbeingUserRepository;
+import com.example.projectmatrix.storage.service.analytics.dto.FullMatrixData;
+import com.example.projectmatrix.storage.service.analytics.dto.FullSmartwatchData;
 
 import java.util.List;
 
-import lombok.RequiredArgsConstructor;
-
-@RequiredArgsConstructor
 public class AnalyticsService {
 
     private final WellbeingUserRepository wellbeingUserRepository;
 
-    public List<String[]> retrieveAllDataForWellbeingUserId(long userId) {
-        return wellbeingUserRepository.getFullData(userId);
+    public AnalyticsService(WellbeingUserRepository  wellbeingUserRepository) {
+        this.wellbeingUserRepository = wellbeingUserRepository;
+    }
+
+    public List<FullMatrixData> retrieveAllMatrixDataForWellbeingUserId(long userId) {
+        return wellbeingUserRepository.getFullMatrixData(userId);
+    }
+
+    public List<FullSmartwatchData> retrieveAllSmartwatchDataForWellbeingUserId(long userId) {
+        return wellbeingUserRepository.getFullSmartwatchData(userId);
     }
 }

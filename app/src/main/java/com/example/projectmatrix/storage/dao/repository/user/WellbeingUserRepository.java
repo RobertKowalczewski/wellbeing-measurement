@@ -5,6 +5,8 @@ import androidx.room.Query;
 
 import com.example.projectmatrix.storage.dao.model.user.WellbeingUser;
 import com.example.projectmatrix.storage.dao.repository.AbstractRepository;
+import com.example.projectmatrix.storage.service.analytics.dto.FullMatrixData;
+import com.example.projectmatrix.storage.service.analytics.dto.FullSmartwatchData;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,6 +25,13 @@ public interface WellbeingUserRepository extends AbstractRepository<WellbeingUse
     @Query("SELECT * FROM wellbeingUser WHERE name = :name AND surname = :surname AND phoneNumber = :phone")
     Optional<WellbeingUser> findByNameAndSurnameAndPhone(String name, String surname, String phone);
 
-    @Query("SELECT * FROM wellbeinguser u LEFT JOIN matrixData m ON u.id = m.wellbeingUserId LEFT JOIN smartwatchData s ON u.id = s.wellbeingUserId")
-    List<String[]> getFullData(long wellbeingUserId);
+    @Query("SELECT u.name, u.surname, u.phoneNumber, " +
+            "m.matrixCoordinateX, m.matrixCoordinateY, m.realCoordinateX, m.realCoordinateY, u.modificationTimestamp " +
+            "FROM wellbeinguser u LEFT JOIN matrixData m ON u.id = m.wellbeingUserId WHERE u.id = :wellbeingUserId")
+    List<FullMatrixData> getFullMatrixData(long wellbeingUserId);
+
+    @Query("SELECT u.name, u.surname, u.phoneNumber," +
+            "s.heartRate, s.modificationTimestamp " +
+            "FROM wellbeinguser u LEFT JOIN smartwatchData s ON u.id = s.wellbeingUserId WHERE u.id = :wellbeingUserId")
+    List<FullSmartwatchData> getFullSmartwatchData(long wellbeingUserId);
 }

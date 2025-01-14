@@ -24,6 +24,7 @@ import com.example.projectmatrix.connection.websocket.WebsocketConnectionService
 import com.example.projectmatrix.dto.SmartwatchDataDto
 import com.example.projectmatrix.storage.config.AppDatabase
 import com.example.projectmatrix.storage.dao.model.user.WellbeingUser
+import com.example.projectmatrix.storage.service.analytics.AnalyticsService
 import com.example.projectmatrix.storage.service.matrix.MatrixDataFactory
 import com.example.projectmatrix.storage.service.matrix.MatrixDataService
 import com.example.projectmatrix.storage.service.smartwatch.SmartwatchDataService
@@ -36,7 +37,6 @@ import java.io.BufferedReader
 import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.net.SocketException
-import kotlin.random.Random
 
 
 data class Location(
@@ -83,16 +83,29 @@ class MainActivity : ComponentActivity() {
 
         db = setupDatabase()
 
+//        GlobalScope.launch {
+//            val smartwatchDataService = SmartwatchDataService(db.smartwatchDataRepository())
+//            val data = smartwatchDataService.findAll()
+//            runOnUiThread {
+//                Log.d("watch_data", "Data from watch: " + data.size)
+//
+//                data.forEach { row ->
+//                    Log.d("watch_data", row.toString())
+//                }
+//            }
+//        }
         GlobalScope.launch {
-            val smartwatchDataService = SmartwatchDataService(db.smartwatchDataRepository())
-            val data = smartwatchDataService.findAll()
-            runOnUiThread {
-                Log.d("watch_data", "Data from watch: " + data.size)
+            val analyticsService = AnalyticsService(db.wellbeingUserRepository())
+            val matrixDataService = MatrixDataService(db.matrixDataRepository())
 
-                data.forEach { row ->
-                    Log.d("watch_data", row.toString())
-                }
+            val data = analyticsService.retrieveAllMatrixDataForWellbeingUserId(1L)
+            val data2 = matrixDataService.findAll()
+
+            runOnUiThread {
+
+                Log.d("FULL", "DATA: " + data.toString())
             }
+
         }
 
         currentLocation = android.location.Location("fused")
@@ -171,22 +184,12 @@ class MainActivity : ComponentActivity() {
                 areYouHereLayout.visibility = View.GONE
                 areYouSureLayout.visibility = View.VISIBLE
             } else {
-                saveMatrixData()
-
-                areYouHereLayout.visibility = View.GONE
-                matrixText.visibility = View.VISIBLE
-                matrixConfirmButton.visibility = View.VISIBLE
-                circleView.visibility = View.INVISIBLE
-                currentPoint++
+                goToNextScenarioStep()
             }
         }
 
         yesSureButton.setOnClickListener {
-            areYouSureLayout.visibility = View.GONE
-            matrixText.visibility = View.VISIBLE
-            matrixConfirmButton.visibility = View.VISIBLE
-            circleView.visibility = View.INVISIBLE
-            currentPoint++
+            goToNextScenarioStep()
         }
 
         noSureButton.setOnClickListener {
@@ -198,6 +201,16 @@ class MainActivity : ComponentActivity() {
             Toast.makeText(this, "Thank you for your participation!", Toast.LENGTH_LONG).show()
             finish()
         }
+    }
+
+    private fun goToNextScenarioStep() {
+        saveMatrixData()
+
+        areYouSureLayout.visibility = View.GONE
+        matrixText.visibility = View.VISIBLE
+        matrixConfirmButton.visibility = View.VISIBLE
+        circleView.visibility = View.INVISIBLE
+        currentPoint++
     }
 
     private fun startWatchConnection(ipAddress: TextView) {

@@ -12,7 +12,7 @@ import com.example.projectmatrix.storage.dao.repository.smartwatch.SmartwatchDat
 import com.example.projectmatrix.storage.dao.repository.user.WellbeingUserRepository;
 import com.example.projectmatrix.storage.utils.Converter;
 
-@Database(entities = {WellbeingUser.class, MatrixData.class, SmartwatchData.class}, version = 6, exportSchema = false)
+@Database(entities = {WellbeingUser.class, MatrixData.class, SmartwatchData.class}, version = 7, exportSchema = false)
 @TypeConverters(Converter.class)
 public abstract class AppDatabase extends RoomDatabase {
     public abstract WellbeingUserRepository wellbeingUserRepository();
