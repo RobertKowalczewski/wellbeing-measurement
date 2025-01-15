@@ -37,6 +37,8 @@ play-services-location = { group = "com.google.android.gms", name = "play-servic
 room-common = 'androidx.room:room-common:2.6.1'
 room-runtime = 'androidx.room:room-runtime:2.6.1'
 room-compiler = 'androidx.room:room-compiler:2.6.1'
+commons-csv = 'org.apache.commons:commons-csv:1.12.0'
+sendgrid = 'com.sendgrid:sendgrid-java:4.9.3'
 
 
 

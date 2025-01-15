@@ -8,6 +8,10 @@ android {
     namespace = "com.example.projectmatrix"
     compileSdk = 35
 
+    packagingOptions {
+        exclude("META-INF/DEPENDENCIES")
+    }
+
     defaultConfig {
         applicationId = "com.example.projectmatrix"
         minSdk = 29
@@ -31,12 +35,15 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
     kotlinOptions {
         jvmTarget = "11"
     }
+
     buildFeatures {
         compose = true
     }
+
 }
 
 dependencies {
@@ -56,6 +63,7 @@ dependencies {
     implementation(libs.java.websocket)
     implementation(libs.play.services.location)
     compileOnly(libs.lombok)
+    annotationProcessor(libs.lombok)
     annotationProcessor(libs.room.compiler)
     runtimeOnly(libs.room.common)
     implementation(libs.room.runtime)
@@ -66,6 +74,6 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-
-    annotationProcessor(libs.lombok)
+    implementation(libs.commons.csv)
+    implementation(libs.sendgrid)
 }

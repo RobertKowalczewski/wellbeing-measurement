@@ -4,10 +4,10 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.Context
-import android.graphics.Color.BLACK
-import android.graphics.Color.RED
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.graphics.Color.BLACK
+import android.graphics.Color.RED
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.util.Log
@@ -21,7 +21,10 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.room.Room.databaseBuilder
 import com.example.projectmatrix.connection.websocket.WebsocketConnectionService
+import com.example.projectmatrix.csv.CsvService
 import com.example.projectmatrix.dto.SmartwatchDataDto
+import com.example.projectmatrix.extern.SavingService
+import com.example.projectmatrix.mail.MailingService
 import com.example.projectmatrix.storage.config.AppDatabase
 import com.example.projectmatrix.storage.dao.model.user.WellbeingUser
 import com.example.projectmatrix.storage.service.analytics.AnalyticsService
@@ -33,7 +36,10 @@ import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.io.BufferedReader
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.net.SocketException
@@ -199,6 +205,7 @@ class MainActivity : ComponentActivity() {
 
         finishButton.setOnClickListener {
             Toast.makeText(this, "Thank you for your participation!", Toast.LENGTH_LONG).show()
+            sendResults();
             finish()
         }
     }
@@ -238,6 +245,49 @@ class MainActivity : ComponentActivity() {
         ipAddress.text = message
     }
 
+    private fun sendResults() {
+        runBlocking {
+            val job = GlobalScope.launch {
+
+                Log.d("LAST", "SAVING...")
+
+                val analyticsService = AnalyticsService(db.wellbeingUserRepository())
+                val csvService = CsvService()
+                val savingService = SavingService()
+
+                val matrixData = wellbeingUser?.let {
+                    analyticsService.retrieveAllMatrixDataForWellbeingUserId(it.id)
+                }
+
+                val smartwatchData = wellbeingUser?.let {
+                    analyticsService.retrieveAllSmartwatchDataForWellbeingUserId(it.id)
+                }
+
+                val csvMatrixFile = csvService.matrixDataToCsvFile(matrixData)
+                val csvSmartwatchFile = csvService.smartwatchDataToCsvFile(smartwatchData)
+
+                if (csvMatrixFile.isEmpty) {
+                    return@launch
+                }
+
+                savingService.saveCsv(streamToBytes(csvMatrixFile.get()), "result_matrix.csv", applicationContext);
+                savingService.saveCsv(streamToBytes(csvSmartwatchFile.get()), "result_smartwatch.csv", applicationContext);
+                Log.d("LAST", "Saved")
+            }
+            job.join()
+        }
+    }
+
+    private fun streamToBytes(inputStream: InputStream): ByteArray {
+        val buffer = ByteArrayOutputStream()
+        var nRead: Int
+        val data = ByteArray(1024)
+        while ((inputStream.read(data, 0, data.size).also { nRead = it }) != -1) {
+            buffer.write(data, 0, nRead)
+        }
+        return buffer.toByteArray()
+    }
+
     private fun getLocalIpAddress(): String? {
         try {
             val en = NetworkInterface.getNetworkInterfaces()
@@ -261,7 +311,7 @@ class MainActivity : ComponentActivity() {
     private fun saveMatrixData() {
         GlobalScope.launch {
             val matrixDataService = MatrixDataService(db.matrixDataRepository())
-            val matrixDataFactory = MatrixDataFactory(matrixDataService)
+            val matrixDataFactory = MatrixDataFactory(matrixDataService, db.wellbeingUserRepository())
 
             val matrixData = matrixDataFactory.create(
                 wellbeingUser,
@@ -270,13 +320,14 @@ class MainActivity : ComponentActivity() {
                 clickCoordinates.get(clickCoordinates.size - 1).first,
                 clickCoordinates.get(clickCoordinates.size - 1).second
             )
+            Log.d("MATRIX", "MATRIX: " + matrixData.toString())
             matrixDataService.save(matrixData)
         }
     }
 
     private fun goToMatrix(name: String, surname: String, phone: String) {
         setUser(name, surname, phone)
-
+        Log.d("USER", "USER: " + wellbeingUser)
         hideKeyboard()
         editTextName.visibility = View.GONE
         editTextSurname.visibility = View.GONE
@@ -323,13 +374,16 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun setUser(name: String, surname: String, phone: String) {
-        GlobalScope.launch {
-            val userService = WellbeingUserService(db.wellbeingUserRepository())
-            wellbeingUser = userService.findOrCreateUser(name, surname, phone)
+        runBlocking {
+            val job = GlobalScope.launch {
+                val userService = WellbeingUserService(db.wellbeingUserRepository())
+                wellbeingUser = userService.findOrCreateUser(name, surname, phone)
 
-            runOnUiThread {
-                Log.i("main", "Data: " + wellbeingUser?.name + " " + wellbeingUser?.surname + " " + wellbeingUser?.creationTimestamp + " " + wellbeingUser?.modificationTimestamp)
+                runOnUiThread {
+                    Log.i("main", "Data: " + wellbeingUser?.name + " " + wellbeingUser?.surname + " " + wellbeingUser?.creationTimestamp + " " + wellbeingUser?.modificationTimestamp)
+                }
             }
+            job.join()
         }
     }
 
