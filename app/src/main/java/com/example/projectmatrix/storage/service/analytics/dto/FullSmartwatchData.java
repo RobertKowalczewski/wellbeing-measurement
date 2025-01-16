@@ -7,13 +7,13 @@ import java.util.Date;
 public class FullSmartwatchData {
 
     @ColumnInfo(name = "name")
-    public long name;
+    public String name;
 
     @ColumnInfo(name = "surname")
-    public long surname;
+    public String surname;
 
     @ColumnInfo(name = "phoneNumber")
-    public long phoneNumber;
+    public String phoneNumber;
 
     @ColumnInfo(name = "heartRate")
     public double heartRate;

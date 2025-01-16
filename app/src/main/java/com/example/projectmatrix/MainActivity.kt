@@ -24,7 +24,6 @@ import com.example.projectmatrix.connection.websocket.WebsocketConnectionService
 import com.example.projectmatrix.csv.CsvService
 import com.example.projectmatrix.dto.SmartwatchDataDto
 import com.example.projectmatrix.extern.SavingService
-import com.example.projectmatrix.mail.MailingService
 import com.example.projectmatrix.storage.config.AppDatabase
 import com.example.projectmatrix.storage.dao.model.user.WellbeingUser
 import com.example.projectmatrix.storage.service.analytics.AnalyticsService
