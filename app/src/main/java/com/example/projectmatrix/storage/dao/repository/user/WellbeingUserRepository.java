@@ -26,7 +26,7 @@ public interface WellbeingUserRepository extends AbstractRepository<WellbeingUse
     Optional<WellbeingUser> findByNameAndSurnameAndPhone(String name, String surname, String phone);
 
     @Query("SELECT u.name, u.surname, u.phoneNumber, " +
-            "m.matrixCoordinateX, m.matrixCoordinateY, m.realCoordinateX, m.realCoordinateY, u.modificationTimestamp " +
+            "m.matrixCoordinateX, m.matrixCoordinateY, m.realCoordinateX, m.realCoordinateY, m.modificationTimestamp " +
             "FROM wellbeinguser u LEFT JOIN matrixData m ON u.id = m.wellbeingUserId WHERE u.id = :wellbeingUserId")
     List<FullMatrixData> getFullMatrixData(long wellbeingUserId);
 

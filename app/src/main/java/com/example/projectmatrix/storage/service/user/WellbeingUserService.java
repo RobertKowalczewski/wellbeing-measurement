@@ -28,7 +28,7 @@ public class WellbeingUserService extends AbstractService<WellbeingUser> {
             newUser.phoneNumber = phone;
             Log.d("new user", "Saving user " + newUser.name + " " + newUser.surname);
             save(newUser);
-            return newUser;
+            return wellbeingUserRepository.findByNameAndSurnameAndPhone(name, surname, phone).get();
         }
         return user.get();
     }

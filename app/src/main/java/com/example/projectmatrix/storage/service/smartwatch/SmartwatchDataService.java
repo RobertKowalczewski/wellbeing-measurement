@@ -3,6 +3,7 @@ package com.example.projectmatrix.storage.service.smartwatch;
 import com.example.projectmatrix.storage.dao.model.smartwatch.SmartwatchData;
 import com.example.projectmatrix.storage.dao.model.user.WellbeingUser;
 import com.example.projectmatrix.storage.dao.repository.smartwatch.SmartwatchDataRepository;
+import com.example.projectmatrix.storage.dao.repository.user.WellbeingUserRepository;
 import com.example.projectmatrix.storage.service.AbstractService;
 
 public class SmartwatchDataService extends AbstractService<SmartwatchData> {
