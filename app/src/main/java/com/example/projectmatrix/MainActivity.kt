@@ -184,9 +184,9 @@ class MainActivity : ComponentActivity() {
             targetLocation.latitude = stopCoordinates[currentPoint].latitude
             targetLocation.longitude = stopCoordinates[currentPoint].longitude
             val distance = currentLocation.distanceTo(targetLocation)
+            areYouHereLayout.visibility = View.GONE
 
             if (distance > 50) {
-                areYouHereLayout.visibility = View.GONE
                 areYouSureLayout.visibility = View.VISIBLE
             } else {
                 goToNextScenarioStep()
